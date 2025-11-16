@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreeU - 启动中</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+        }
+        
+        .logo {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        
+        .title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        .status {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-top: 20px;
+            min-height: 24px;
+        }
+        
+        .retry-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            display: none;
+        }
+        
+        .retry-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            width: 0%;
+            animation: loading-progress 10s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes loading-progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        
+        .error-message {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎯</div>
+        <div class="title">FreeU</div>
+        <div class="subtitle">AI文件整理助手</div>
+        
+        <div class="loading">
+            <div class="spinner"></div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        
+        <div class="status" id="status">正在启动后端服务...</div>
+        
+        <div class="error-message" id="errorMessage">
+            <strong>启动失败</strong><br>
+            无法连接到后端服务，请检查Python环境是否正确安装。
+        </div>
+        
+        <button class="retry-button" id="retryButton" onclick="retryConnection()">
+            🔄 重新连接
+        </button>
+    </div>
+
+    <script>
+        const statusElement = document.getElementById('status');
+        const errorElement = document.getElementById('errorMessage');
+        const retryButton = document.getElementById('retryButton');
+        
+        const statusMessages = [
+            '正在启动后端服务...',
+            '正在加载AI模型...',
+            '正在初始化界面...',
+            '正在连接服务...',
+            '即将就绪...'
+        ];
+        
+        let messageIndex = 0;
+        let checkAttempts = 0;
+        const maxAttempts = 30;
+        
+        // 状态消息轮询
+        const statusInterval = setInterval(() => {
+            messageIndex = (messageIndex + 1) % statusMessages.length;
+            statusElement.textContent = statusMessages[messageIndex];
+        }, 2000);
+        
+        // 检查后端服务
+        async function checkBackendStatus() {
+            checkAttempts++;
+            
+            try {
+                const response = await fetch(`http://127.0.0.1:7860/`, {
+                    method: 'GET',
+                    timeout: 3000
+                });
+                
+                if (response.ok) {
+                    clearInterval(statusInterval);
+                    statusElement.textContent = '✅ 服务已就绪，正在加载界面...';
+                    
+                    // 等待一秒后重定向
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                    
+                    return;
+                }
+            } catch (error) {
+                console.log(`第${checkAttempts}次检查失败: ${error.message}`);
+            }
+            
+            if (checkAttempts >= maxAttempts) {
+                clearInterval(statusInterval);
+                showError();
+            } else {
+                setTimeout(checkBackendStatus, 2000);
+            }
+        }
+        
+        function showError() {
+            statusElement.style.display = 'none';
+            document.querySelector('.loading').style.display = 'none';
+            document.querySelector('.progress-bar').style.display = 'none';
+            errorElement.style.display = 'block';
+            retryButton.style.display = 'inline-block';
+        }
+        
+        function retryConnection() {
+            checkAttempts = 0;
+            messageIndex = 0;
+            
+            statusElement.style.display = 'block';
+            document.querySelector('.loading').style.display = 'flex';
+            document.querySelector('.progress-bar').style.display = 'block';
+            errorElement.style.display = 'none';
+            retryButton.style.display = 'none';
+            
+            statusElement.textContent = statusMessages[0];
+            checkBackendStatus();
+        }
+        
+        // 开始检查
+        setTimeout(checkBackendStatus, 3000);
+        
+        console.log('🔄 等待页面加载完成...');
+    </script>
+</body>
+</html>
