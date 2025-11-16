@@ -1,0 +1,31 @@
+[2025-11-16 14:01:16] [INFO] [freeu] FreeU日志系统初始化完成
+[2025-11-16 14:01:16] [INFO] [freeu] 日志文件: logs/freeu_20251116.log
+[2025-11-16 14:01:16] [INFO] [freeu] [开始] 测试操作
+[2025-11-16 14:01:16] [INFO] [freeu] [完成] 测试操作 - 成功
+[2025-11-16 14:01:16] [INFO] [src.core.scanner] 初始化目录扫描器: /Users/dave/dev/freeu/freeu/test_temp
+[2025-11-16 14:01:16] [INFO] [src.core.scanner] 开始扫描目录: /Users/dave/dev/freeu/freeu/test_temp (recursive=False)
+[2025-11-16 14:01:16] [INFO] [src.core.scanner] 扫描完成，找到 1 个文件
+[2025-11-16 14:07:03] [INFO] [freeu] FreeU日志系统初始化完成
+[2025-11-16 14:07:03] [INFO] [freeu] 日志文件: logs/freeu_20251116.log
+[2025-11-16 14:07:03] [INFO] [freeu] FreeU界面初始化
+[2025-11-16 14:07:04] [INFO] [httpx] HTTP Request: HEAD https://huggingface.co/api/telemetry/https%3A/api.gradio.app/gradio-initiated-analytics "HTTP/1.1 200 OK"
+[2025-11-16 14:07:04] [INFO] [httpx] HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+[2025-11-16 14:10:39] [INFO] [freeu] FreeU日志系统初始化完成
+[2025-11-16 14:10:39] [INFO] [freeu] 日志文件: logs/freeu_20251116.log
+[2025-11-16 14:10:39] [INFO] [freeu] FreeU界面初始化
+[2025-11-16 14:10:40] [INFO] [httpx] HTTP Request: HEAD https://huggingface.co/api/telemetry/https%3A/api.gradio.app/gradio-initiated-analytics "HTTP/1.1 200 OK"
+[2025-11-16 14:10:40] [INFO] [httpx] HTTP Request: GET http://127.0.0.1:7860/gradio_api/startup-events "HTTP/1.1 200 OK"
+[2025-11-16 14:10:40] [INFO] [httpx] HTTP Request: HEAD http://127.0.0.1:7860/ "HTTP/1.1 200 OK"
+[2025-11-16 14:10:40] [INFO] [httpx] HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+[2025-11-16 14:10:40] [INFO] [httpx] HTTP Request: HEAD https://huggingface.co/api/telemetry/https%3A/api.gradio.app/gradio-launched-telemetry "HTTP/1.1 200 OK"
+[2025-11-16 14:20:24] [INFO] [freeu] FreeU日志系统初始化完成
+[2025-11-16 14:20:24] [INFO] [freeu] 日志文件: logs/freeu_20251116.log
+[2025-11-16 14:20:24] [INFO] [freeu] FreeU界面初始化
+[2025-11-16 14:20:27] [INFO] [httpx] HTTP Request: HEAD https://huggingface.co/api/telemetry/https%3A/api.gradio.app/gradio-initiated-analytics "HTTP/1.1 200 OK"
+[2025-11-16 14:20:27] [INFO] [httpx] HTTP Request: GET https://api.gradio.app/pkg-version "HTTP/1.1 200 OK"
+[2025-11-16 14:26:41] [INFO] [freeu] [开始] 扫描目录 - {'path': '/Users/dave/Desktop', 'recursive': False}
+[2025-11-16 14:26:41] [INFO] [src.core.scanner] 初始化目录扫描器: /Users/dave/Desktop
+[2025-11-16 14:26:41] [INFO] [src.core.scanner] 开始扫描目录: /Users/dave/Desktop (recursive=False)
+[2025-11-16 14:26:41] [INFO] [src.core.scanner] 跳过隐藏文件: .claude
+[2025-11-16 14:26:41] [INFO] [src.core.scanner] 扫描完成，找到 5 个文件
+[2025-11-16 14:26:41] [INFO] [freeu] [完成] 扫描目录 - 找到 5 个文件

@@ -3,7 +3,10 @@ import logging
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from pydantic.v1 import BaseModel, Field
 from src.utils.config import config
 
 logger = logging.getLogger(__name__)
@@ -36,16 +39,20 @@ class DirectoryScanner:
                 logger.warning(f"路径不在基础目录下: {path}")
                 return False
             
-            # 检查是否在排除路径列表中
+            # 检查是否在排除路径列表中（主要针对系统目录）
             for excluded_path in config.excluded_paths:
-                excluded = Path(excluded_path).expanduser().resolve()
-                if str(resolved_path).startswith(str(excluded)):
-                    logger.warning(f"路径在排除列表中: {path}")
-                    return False
+                try:
+                    excluded = Path(excluded_path).expanduser().resolve()
+                    if str(resolved_path).startswith(str(excluded)):
+                        logger.debug(f"路径在排除列表中: {path} -> {excluded_path}")
+                        return False
+                except Exception:
+                    # 如果排除路径解析失败，跳过检查
+                    continue
             
             # 检查是否是隐藏文件（以.开头）
             if path.name.startswith('.'):
-                logger.info(f"跳过隐藏文件: {path.name}")
+                logger.debug(f"跳过隐藏文件: {path.name}")
                 return False
             
             return True
@@ -66,16 +73,20 @@ class DirectoryScanner:
         
         self.files = []
         file_count = 0
+        skipped_count = 0
         
         try:
             if recursive:
                 # 递归扫描
+                logger.info("开始递归扫描...")
                 for root, dirs, files in os.walk(self.base_path):
                     root_path = Path(root)
                     
                     # 检查目录是否安全
                     if not self.is_path_safe(root_path):
+                        logger.debug(f"跳过目录（安全限制）: {root_path}")
                         dirs[:] = []  # 跳过此目录
+                        skipped_count += len(files)
                         continue
                     
                     # 处理文件
@@ -88,21 +99,29 @@ class DirectoryScanner:
                                 self.files.append(file_info)
                                 file_count += 1
                                 
-                                # 检查文件数量限制
-                                if file_count >= config.max_files:
-                                    logger.warning(f"达到文件数量限制: {config.max_files}")
+                                # 定期输出进度
+                                if file_count % 100 == 0:
+                                    logger.info(f"已扫描 {file_count} 个文件...")
+                                
+                                # 检查文件数量限制（除非设置为扫描所有文件）
+                                if not config._config.get('scan_all_files', False) and file_count >= config.max_files:
+                                    logger.warning(f"达到文件数量限制: {config.max_files}，可在设置中开启'扫描所有文件'选项")
                                     break
                                     
                             except Exception as e:
                                 logger.error(f"处理文件失败: {file_path} - {e}")
+                                skipped_count += 1
+                        else:
+                            skipped_count += 1
                         
-                        if file_count >= config.max_files:
+                        if not config._config.get('scan_all_files', False) and file_count >= config.max_files:
                             break
                     
-                    if file_count >= config.max_files:
+                    if not config._config.get('scan_all_files', False) and file_count >= config.max_files:
                         break
             else:
                 # 只扫描当前目录
+                logger.info("开始扫描当前目录...")
                 for item in self.base_path.iterdir():
                     if self.is_path_safe(item) and item.is_file():
                         try:
@@ -110,19 +129,23 @@ class DirectoryScanner:
                             self.files.append(file_info)
                             file_count += 1
                             
-                            # 检查文件数量限制
-                            if file_count >= config.max_files:
-                                logger.warning(f"达到文件数量限制: {config.max_files}")
+                            # 检查文件数量限制（除非设置为扫描所有文件）
+                            if not config._config.get('scan_all_files', False) and file_count >= config.max_files:
+                                logger.warning(f"达到文件数量限制: {config.max_files}，可在设置中开启'扫描所有文件'选项")
                                 break
                                 
                         except Exception as e:
                             logger.error(f"处理文件失败: {item} - {e}")
+                            skipped_count += 1
+                    else:
+                        skipped_count += 1
         
         except Exception as e:
             logger.error(f"扫描目录失败: {self.base_path} - {e}")
             raise
         
-        logger.info(f"扫描完成，找到 {len(self.files)} 个文件")
+        logger.info(f"扫描完成，找到 {len(self.files)} 个文件，跳过 {skipped_count} 个文件")
+        logger.info(f"文件大小范围: {min(f.size for f in self.files) if self.files else 0} - {max(f.size for f in self.files) if self.files else 0} bytes")
         return self.files
     
     def _create_file_info(self, file_path: Path) -> FileInfo:

@@ -1,10 +1,15 @@
 import json
 import logging
 from typing import List, Dict, Optional
-from anthropic import Anthropic
-from pydantic import BaseModel, Field
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from pydantic.v1 import BaseModel, Field
 from src.utils.config import config
 from src.core.scanner import FileInfo
+from src.core.ai_adapter import (
+    AIProvider, AIAdapterFactory
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,26 +38,69 @@ class AIResponse(BaseModel):
             ]
         }
 
-class ClaudeAI:
-    """Claude AI集成类"""
+class MultiAIEngine:
+    """多AI提供商统一引擎"""
     
-    def __init__(self):
-        self.client = None
-        self._initialize_client()
+    def __init__(self, provider: str = None):
+        self.provider = provider or config.ai_provider
+        self.adapter = None
+        self._initialize_adapter()
     
-    def _initialize_client(self) -> None:
-        """初始化Claude客户端"""
-        api_key = config.anthropic_api_key
-        if not api_key:
-            logger.error("未配置Claude API Key")
-            raise ValueError("请配置Claude API Key")
+    def _initialize_adapter(self) -> None:
+        """初始化AI适配器"""
+        # 获取当前启用的AI配置
+        ai_config = config.get_active_ai_config()
+        if not ai_config:
+            available_providers = self.get_available_providers()
+            if available_providers:
+                raise ValueError(f"请先配置AI提供商的API Key。可用的提供商：{', '.join(available_providers)}")
+            else:
+                raise ValueError("没有可用的AI提供商，请在设置中配置API Key")
+        
+        api_key = ai_config.get('api_key')
+        model = ai_config.get('model')
         
         try:
-            self.client = Anthropic(api_key=api_key)
-            logger.info("Claude客户端初始化成功")
+            # 创建适配器
+            ai_provider = AIProvider(self.provider)
+            self.adapter = AIAdapterFactory.create_adapter(ai_provider, api_key, model)
+            logger.info(f"AI适配器初始化成功: {self.provider}")
+            
         except Exception as e:
-            logger.error(f"Claude客户端初始化失败: {e}")
+            logger.error(f"AI适配器初始化失败: {e}")
             raise
+    
+    def get_available_providers(self) -> List[str]:
+        """获取可用的AI提供商列表"""
+        available = []
+        providers = config._config.get('ai_providers', {})
+        
+        for provider, config_data in providers.items():
+            if config_data.get('enabled', False) and config_data.get('api_key'):
+                available.append(provider)
+        
+        return available
+    
+    def switch_provider(self, provider: str) -> bool:
+        """切换AI提供商"""
+        try:
+            # 检查提供商是否可用
+            provider_config = config.get_ai_provider_config(provider)
+            if not provider_config.get('api_key'):
+                logger.error(f"提供商 {provider} 未配置API Key")
+                return False
+            
+            # 切换提供商
+            self.provider = provider
+            config.ai_provider = provider
+            self._initialize_adapter()
+            
+            logger.info(f"成功切换到AI提供商: {provider}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"切换AI提供商失败: {e}")
+            return False
     
     def _build_system_prompt(self) -> str:
         """构建系统提示词"""
@@ -130,70 +178,39 @@ class ClaudeAI:
     
     def generate_organization_plan(self, user_instruction: str, files: List[FileInfo]) -> AIResponse:
         """生成文件整理方案"""
-        logger.info(f"开始生成整理方案，用户指令: {user_instruction}, 文件数量: {len(files)}")
+        logger.info(f"开始生成整理方案，用户指令: {user_instruction}, 文件数量: {len(files)}, 提供商: {self.provider}")
         
-        if not self.client:
-            raise ValueError("Claude客户端未初始化")
+        if not self.adapter:
+            raise ValueError("AI适配器未初始化")
         
         if not files:
             logger.warning("文件列表为空")
             return AIResponse(actions=[])
         
         try:
-            # 构建提示词
-            system_prompt = self._build_system_prompt()
-            user_prompt = self._build_user_prompt(user_instruction, files)
+            # 使用适配器生成方案
+            result_data = self.adapter.generate_organization_plan(user_instruction, files)
             
-            logger.debug(f"系统提示词: {system_prompt}")
-            logger.debug(f"用户提示词: {user_prompt}")
-            
-            # 调用Claude API
-            response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=4096,
-                temperature=0.1,  # 降低随机性，提高一致性
-                system=system_prompt,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": user_prompt
-                    }
-                ]
-            )
-            
-            # 解析响应
-            content = response.content[0].text
-            logger.debug(f"Claude响应: {content}")
-            
-            # 解析JSON
-            try:
-                data = json.loads(content)
-                actions = []
-                
-                # 验证并构建操作列表
-                for action_data in data.get("actions", []):
-                    try:
-                        action = FileAction(**action_data)
-                        # 验证操作类型
-                        if action.action_type not in config.allowed_operations:
-                            logger.warning(f"跳过不允许的操作类型: {action.action_type}")
-                            continue
-                        actions.append(action)
-                    except Exception as e:
-                        logger.error(f"解析操作失败: {action_data} - {e}")
+            # 解析操作列表
+            actions = []
+            for action_data in result_data.get("actions", []):
+                try:
+                    action = FileAction(**action_data)
+                    # 验证操作类型
+                    if action.action_type not in config.allowed_operations:
+                        logger.warning(f"跳过不允许的操作类型: {action.action_type}")
                         continue
-                
-                result = AIResponse(actions=actions)
-                logger.info(f"生成整理方案完成，操作数量: {len(actions)}")
-                return result
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON解析失败: {e}")
-                logger.error(f"原始响应: {content}")
-                raise ValueError(f"AI响应格式错误: {e}")
-                
+                    actions.append(action)
+                except Exception as e:
+                    logger.error(f"解析操作失败: {action_data} - {e}")
+                    continue
+            
+            result = AIResponse(actions=actions)
+            logger.info(f"生成整理方案完成，操作数量: {len(actions)}")
+            return result
+            
         except Exception as e:
-            logger.error(f"调用Claude API失败: {e}")
+            logger.error(f"生成整理方案失败: {e}")
             raise
     
     def validate_actions(self, actions: List[FileAction], available_files: List[FileInfo]) -> List[Dict]:

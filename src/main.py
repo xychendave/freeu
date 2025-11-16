@@ -8,10 +8,10 @@ import sys
 import os
 from pathlib import Path
 
-# 将src目录添加到Python路径
+# 将项目根目录添加到Python路径
 current_dir = Path(__file__).parent
-src_dir = current_dir / 'src'
-sys.path.insert(0, str(src_dir))
+project_root = current_dir.parent
+sys.path.insert(0, str(project_root))
 
 def main():
     """主函数"""
@@ -42,13 +42,13 @@ def main():
         app = create_app()
         
         print("✅ 应用启动成功！")
-        print("📱 请打开浏览器访问: http://127.0.0.1:7860")
+        print("📱 请打开浏览器访问: http://127.0.0.1:7861")
         print("⏹️  按 Ctrl+C 停止应用")
         
         # 启动Gradio应用
         app.launch(
             server_name="127.0.0.1",
-            server_port=7860,
+            server_port=7861,
             share=False,
             show_error=True,
             quiet=False

@@ -2,7 +2,11 @@ import os
 import shutil
 import logging
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
+try:
+    from pydantic import BaseModel, Field
+except ImportError:
+    from pydantic.v1 import BaseModel, Field
 from src.core.ai_engine import FileAction
 from src.core.scanner import FileInfo
 from src.utils.config import config
