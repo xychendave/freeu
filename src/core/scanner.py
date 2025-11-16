@@ -123,7 +123,7 @@ class DirectoryScanner:
                 # 只扫描当前目录
                 logger.info("开始扫描当前目录...")
                 for item in self.base_path.iterdir():
-                    if self.is_path_safe(item) and item.is_file():
+                    if self.is_path_safe(item):
                         try:
                             file_info = self._create_file_info(item)
                             self.files.append(file_info)
@@ -135,7 +135,7 @@ class DirectoryScanner:
                                 break
                                 
                         except Exception as e:
-                            logger.error(f"处理文件失败: {item} - {e}")
+                            logger.error(f"处理项目失败: {item} - {e}")
                             skipped_count += 1
                     else:
                         skipped_count += 1
@@ -151,36 +151,39 @@ class DirectoryScanner:
     def _create_file_info(self, file_path: Path) -> FileInfo:
         """创建文件信息对象"""
         stat = file_path.stat()
-        
+        is_dir = file_path.is_dir()
         # 计算相对路径
         try:
             relative_path = file_path.relative_to(self.base_path)
         except ValueError:
             relative_path = file_path.name
-        
+        # 文件夹大小设为0，扩展名设为空
+        file_size = 0 if is_dir else stat.st_size
+        file_ext = "" if is_dir else file_path.suffix.lower()
         return FileInfo(
             name=file_path.name,
             path=str(relative_path),
-            extension=file_path.suffix.lower(),
-            size=stat.st_size,
+            extension=file_ext,
+            size=file_size,
             modified_time=datetime.fromtimestamp(stat.st_mtime),
-            is_directory=file_path.is_dir()
+            is_directory=is_dir
         )
     
     def get_files_summary(self) -> Dict:
         """获取文件统计摘要"""
         if not self.files:
-            return {"total_files": 0, "total_size": 0, "extensions": {}}
-        
-        total_size = sum(file.size for file in self.files)
+            return {"total_files": 0, "total_size": 0, "extensions": {}, "total_directories": 0}
+        files_only = [f for f in self.files if not f.is_directory]
+        dirs_only = [f for f in self.files if f.is_directory]
+        total_size = sum(file.size for file in files_only)
         extensions = {}
-        
-        for file in self.files:
+        for file in files_only:
             ext = file.extension or "无扩展名"
             extensions[ext] = extensions.get(ext, 0) + 1
-        
         return {
-            "total_files": len(self.files),
+            "total_files": len(files_only),
+            "total_directories": len(dirs_only),
+            "total_items": len(self.files),
             "total_size": total_size,
             "extensions": extensions,
             "scan_path": str(self.base_path)
