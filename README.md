@@ -1,5 +1,7 @@
 # FreeU - AI文件整理助手
 
+![FreeU Report](logo/report.png)
+
 基于多AI提供商支持的本地文件整理工具，让普通用户通过自然语言指令轻松整理文件。支持Claude、OpenAI、Kimi、GLM、OpenRouter等多个AI提供商。
 
 ## 功能特点
